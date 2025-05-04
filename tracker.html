@@ -1,3 +1,4 @@
+<!-- AI-enhanced Financial Tracker with upgraded AI Insights -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,7 +16,8 @@
     .total { font-weight: bold; margin-top: 20px; }
     #quote { margin-top: 30px; font-style: italic; background: #ffe6e6; padding: 10px; border-left: 4px solid #cc0000; }
     canvas { margin-top: 30px; background: #ffffff; border: 1px solid #cc0000; padding: 10px; border-radius: 5px; }
-
+    #ai-education, #prediction { background: #fff0f0; padding: 15px; border-radius: 5px; margin-top: 30px; }
+    .ai-sub { margin-top: 10px; font-size: 0.9em; color: #990000; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -30,7 +32,6 @@
       <option value="personal">Personal</option>
       <option value="business">Business</option>
     </select>
-
     <input type="text" id="description" placeholder="Description">
     <input type="number" id="amount" placeholder="Amount">
     <button onclick="addEntry()">Add Entry</button>
@@ -42,16 +43,38 @@
       <option value="7">Last 7 Days</option>
       <option value="30">Last 30 Days</option>
     </select>
-
     <input type="text" id="search" placeholder="Search description..." oninput="renderEntries()">
 
     <div id="entries"></div>
-
     <div class="total">Total: $<span id="total">0.00</span></div>
 
     <canvas id="chart" width="600" height="400"></canvas>
-
     <div id="quote"></div>
+
+    <div id="ai-education">
+      <h2>📘 Learn AI with Your Spending Data</h2>
+      <ul>
+        <li>🧠 <strong>Classification:</strong> Automatically assign categories to expenses like "Uber" as travel.</li>
+        <li>📊 <strong>Prediction:</strong> Forecast your upcoming spending based on past behavior.</li>
+        <li>🚨 <strong>Anomaly Detection:</strong> Identify unusually high or unexpected expenses.</li>
+      </ul>
+      <p class="ai-sub">This tool introduces concepts in machine learning and artificial intelligence through practical budgeting tasks.</p>
+
+      <h3>🎓 Try It: Expense Classifier</h3>
+      <input type="text" id="aiTestInput" placeholder="e.g., Starbucks, Uber, Electric bill">
+      <button onclick="testAIClassifier()">Classify</button>
+      <p><strong>Predicted Category:</strong> <span id="aiCategoryResult">-</span></p>
+
+      <h3>📈 Learn More</h3>
+      <p><a href="https://www.techtarget.com/searchenterpriseai/definition/machine-learning-ML" target="_blank">📚 What is Machine Learning?</a></p>
+    </div>
+
+    <div id="prediction">
+      <h2>🤖 Expense Prediction</h2>
+      <p>Based on your past entries, this estimate predicts your next period's spending:</p>
+      <p><strong>Predicted Expense:</strong> $<span id="predictedAmount">0.00</span></p>
+      <button onclick="predictNextExpense()">Predict Next Period</button>
+    </div>
   </div>
 
   <script>
@@ -65,17 +88,14 @@
       const type = document.getElementById('type').value;
       const description = document.getElementById('description').value.trim();
       const amount = parseFloat(document.getElementById('amount').value);
-
       if (!description || isNaN(amount)) {
         alert('Please provide a valid description and amount.');
         return;
       }
-
       const entry = { type, description, amount, date: new Date().toISOString() };
       entries.push(entry);
       saveEntries();
       renderEntries();
-
       document.getElementById('description').value = '';
       document.getElementById('amount').value = '';
     }
@@ -84,22 +104,18 @@
       const entriesDiv = document.getElementById('entries');
       entriesDiv.innerHTML = '';
       let total = 0;
-
       let filteredEntries = getFilteredEntries();
-
       const searchQuery = document.getElementById('search').value.toLowerCase();
       if (searchQuery) {
         filteredEntries = filteredEntries.filter(entry => entry.description.toLowerCase().includes(searchQuery));
       }
-
       filteredEntries.forEach((entry, index) => {
         const div = document.createElement('div');
         div.className = 'entry';
-        div.innerHTML = `<strong>[${entry.type}]</strong> ${entry.description}: $${entry.amount.toFixed(2)}<br><small>${new Date(entry.date).toLocaleString()}</small><br><button onclick="deleteEntry(${index})">Delete</button>`;
+        div.innerHTML = `<strong>[${entry.type}]</strong> ${entry.description}: $${entry.amount.toFixed(2)}<br><em>Category: ${categorize(entry.description)}</em><br><small>${new Date(entry.date).toLocaleString()}</small><br><button onclick="deleteEntry(${index})">Delete</button>`;
         entriesDiv.appendChild(div);
         total += entry.amount;
       });
-
       document.getElementById('total').innerText = total.toFixed(2);
       drawChart(filteredEntries);
     }
@@ -140,16 +156,29 @@
     function getFilteredEntries() {
       const range = document.getElementById('filterRange').value;
       if (range === 'all') return entries;
-
       const days = parseInt(range);
       const now = new Date();
-
       return entries.filter(entry => {
         const entryDate = new Date(entry.date);
         const diffTime = now - entryDate;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
         return diffDays <= days;
       });
+    }
+
+    function drawChart(filteredEntries) {
+      const canvas = document.getElementById('chart');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const personalTotal = filteredEntries.filter(e => e.type === 'personal').reduce((sum, e) => sum + e.amount, 0);
+      const businessTotal = filteredEntries.filter(e => e.type === 'business').reduce((sum, e) => sum + e.amount, 0);
+      const maxTotal = Math.max(personalTotal, businessTotal, 1);
+      ctx.fillStyle = '#cc0000';
+      ctx.fillRect(100, canvas.height - (personalTotal / maxTotal * 300), 100, (personalTotal / maxTotal * 300));
+      ctx.fillText('Personal', 110, canvas.height - 10);
+      ctx.fillStyle = '#990000';
+      ctx.fillRect(300, canvas.height - (businessTotal / maxTotal * 300), 100, (businessTotal / maxTotal * 300));
+      ctx.fillText('Business', 310, canvas.height - 10);
     }
 
     function displayRandomQuote() {
@@ -167,29 +196,46 @@
       document.getElementById('quote').innerText = '💬 ' + randomQuote;
     }
 
-    function drawChart(filteredEntries) {
-      const canvas = document.getElementById('chart');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const personalTotal = filteredEntries.filter(e => e.type === 'personal').reduce((sum, e) => sum + e.amount, 0);
-      const businessTotal = filteredEntries.filter(e => e.type === 'business').reduce((sum, e) => sum + e.amount, 0);
-
-      const maxTotal = Math.max(personalTotal, businessTotal, 1);
-
-      ctx.fillStyle = '#cc0000';
-      ctx.fillRect(100, canvas.height - (personalTotal / maxTotal * 300), 100, (personalTotal / maxTotal * 300));
-      ctx.fillText('Personal', 110, canvas.height - 10);
-
-      ctx.fillStyle = '#990000';
-      ctx.fillRect(300, canvas.height - (businessTotal / maxTotal * 300), 100, (businessTotal / maxTotal * 300));
-      ctx.fillText('Business', 310, canvas.height - 10);
+    function categorize(description) {
+      const keywords = {
+        groceries: ['grocery', 'walmart', 'whole foods', 'kroger', 'aldi'],
+        travel: ['uber', 'flight', 'airbnb', 'lyft', 'taxi', 'train', 'bus'],
+        utilities: ['electric', 'gas', 'internet', 'water', 'utility', 'bill'],
+        dining: ['restaurant', 'coffee', 'starbucks', 'pizza', 'mcdonalds', 'dining'],
+        entertainment: ['netflix', 'spotify', 'movie', 'concert', 'game', 'theater'],
+        shopping: ['amazon', 'mall', 'shopping', 'clothes', 'target', 'best buy'],
+        healthcare: ['pharmacy', 'doctor', 'dentist', 'hospital', 'medicine'],
+        finance: ['bank', 'transfer', 'investment', 'interest', 'loan', 'credit'],
+        education: ['tuition', 'books', 'course', 'school', 'university']
+      };
+      for (const [category, words] of Object.entries(keywords)) {
+        if (words.some(word => description.toLowerCase().includes(word))) {
+          return category;
+        }
+      }
+      return 'other';
     }
 
-    // Initial load
+    function testAIClassifier() {
+      const input = document.getElementById('aiTestInput').value;
+      const category = categorize(input);
+      document.getElementById('aiCategoryResult').innerText = category;
+    }
+
+    function predictNextExpense() {
+      const recentEntries = getFilteredEntries();
+      if (recentEntries.length === 0) {
+        document.getElementById('predictedAmount').innerText = '0.00';
+        return;
+      }
+      const amounts = recentEntries.map(e => e.amount);
+      const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+      const predicted = avg * 1.1; // simple regression-based prediction
+      document.getElementById('predictedAmount').innerText = predicted.toFixed(2);
+    }
+
     renderEntries();
     displayRandomQuote();
   </script>
 </body>
 </html>
-
